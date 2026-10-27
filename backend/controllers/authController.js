@@ -42,10 +42,9 @@ const registerUser = async (req, res) => {
     }
 
     const userData = {
-      id: 'usr-' + Date.now(),
       name: name.trim(),
       email: cleanEmail,
-      password: password, // In production, bcrypt is used
+      password: password,
       phone: phone || '',
       address: {
         street: street || '',
@@ -55,20 +54,21 @@ const registerUser = async (req, res) => {
       role: 'customer'
     };
 
+    let savedId = 'usr-' + Date.now();
+
     if (getDbStatus()) {
-      try {
-        const newUser = new User(userData);
-        await newUser.save();
-      } catch (err) {
-        console.warn('[User DB Error]', err.message);
-      }
+      const newUser = new User(userData);
+      const saved = await newUser.save();
+      savedId = saved._id.toString();
+      console.log('[MongoDB] User saved to Atlas:', saved.email);
     }
 
-    memoryUsers.push(userData);
+    // Also keep in memory for fallback
+    memoryUsers.push({ ...userData, id: savedId });
 
     // Return safe user info
     const safeUser = {
-      id: userData.id,
+      id: savedId,
       name: userData.name,
       email: userData.email,
       phone: userData.phone,
@@ -79,6 +79,7 @@ const registerUser = async (req, res) => {
     res.status(201).json({
       success: true,
       message: 'Account created successfully! Welcome to Royal Sweet Shop.',
+      db_warning: getDbStatus() ? null : '⚠️ Database is currently disconnected. Your data was not saved to the cloud.',
       data: safeUser
     });
   } catch (error) {
@@ -121,6 +122,7 @@ const loginUser = async (req, res) => {
     res.json({
       success: true,
       message: `Welcome back, ${user.name}!`,
+      db_warning: getDbStatus() ? null : '⚠️ Database is currently disconnected. Running in offline mode.',
       data: safeUser
     });
   } catch (error) {

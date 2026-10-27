@@ -42,7 +42,14 @@ app.get('/', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  const { getDbStatus } = require('./config/db');
+  const dbConnected = getDbStatus();
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    database: dbConnected ? 'connected' : 'disconnected',
+    db_error: dbConnected ? null : 'Unable to connect to MongoDB Atlas. Data will not be saved.'
+  });
 });
 
 // Start server and connect DB
